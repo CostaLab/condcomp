@@ -1,0 +1,29 @@
+Package: condcomp
+Title: Condition Comparison in scRNA-seq Data
+Version: 0.99.0
+Authors@R: person("Diogo", "P. P. Branco",
+    email = "diogo.pp.branco@gmail.com", role = c("aut", "cre"))
+Description: For a given clustered data, which can also be split
+    into two conditions, this package provides a way to perform a
+    condition comparison on said clustered data. The comparison is
+    performed on each cluster. Several statistics are used and, when
+    analysed in conjunction, they might give some insight regarding
+    the heterogeneity of some of the clusters.
+Depends: R (>= 3.5.0)
+License: GPL (>=2) | file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    cluster,
+    ggplot2,
+    ggrepel,
+    outliers
+RoxygenNote: 6.0.1
+Suggests: testthat,
+    knitr,
+    rmarkdown,
+    BiocStyle,
+    Matrix,
+    Seurat
+biocViews: SingleCell, Visualization
+VignetteBuilder: knitr
