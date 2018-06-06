@@ -6,8 +6,8 @@
 #' transplant (HSCT) for acute myeloid leukemia (AML).
 #'
 #' @references Zheng, Grace XY, et al. "Massively parallel digital
-#'   transcriptional profiling of single cells." Nature communications 8 (2017):
-#'   14049.
+#'     transcriptional profiling of single cells." Nature communications 8
+#'     (2017): 14049.
 "aml_pre"
 
 #' AML_027: post HSCT for AML
@@ -18,6 +18,6 @@
 #' transplant (HSCT) for acute myeloid leukemia (AML).
 #'
 #' @references Zheng, Grace XY, et al. "Massively parallel digital
-#'   transcriptional profiling of single cells." Nature communications 8 (2017):
-#'   14049.
+#'     transcriptional profiling of single cells." Nature communications 8
+#'     (2017): 14049.
 "aml_post"

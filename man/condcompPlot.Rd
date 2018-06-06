@@ -33,7 +33,7 @@ in the legend.
 clustering <- iris$Species
 dmatrix <- as.matrix(dist(iris[-length(iris)]))
 # Suppose the conditions are 'young' and 'old' fish
-cond <- sample(c("young", "old"), nrow(iris), replace = TRUE)
-comp <- condcomp(clustering, cond, dmatrix = dmatrix, n = 10)
+cond <- sample(c("young", "old"), nrow(iris), replace=TRUE)
+comp <- condcomp(clustering, cond, dmatrix=dmatrix, n=10)
 condcompPlot(comp)
 }

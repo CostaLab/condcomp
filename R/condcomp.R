@@ -1,61 +1,57 @@
 
 rsilhouette <- function(clustering, n = 1000, ...) {
-    sapply(1:n,
+    vapply(seq_len(n),
         function(x, ...) {
             rand_clust <- sample(clustering, length(clustering))
             rsil <- cluster::silhouette(as.integer(rand_clust), ...)
             return(summary(rsil)$avg.width)
-        }, ...)
+        }, 0, ...)
 }
 
 condcomp_cluster <-
-    function(cond,
-             n = 1000,
-             rand.sil = NULL,
-             return.full = FALSE,
-             ...) {
-        if (length(levels(cond)) > 2) {
-            stop("Too many conditions. Maximum is 2.")
-        }
-        true_sil_full <- cluster::silhouette(as.integer(cond), ...)
-        if (length(true_sil_full) > 1) {
-            true_sil <- summary(true_sil_full)$avg.width
-            if (is.null(rand.sil)) {
-                rand.sil <- rsilhouette(cond, n = n, ...)
-            }
-            pval <- sum(rand.sil > true_sil) / length(rand.sil)
-            all.sils <- c(rand.sil, true_sil)
-            iqr <- "Same"
-            if (length(all.sils) %in%
-                which(outliers::scores(all.sils, type = "iqr", lim = TRUE))) {
-                iqr <- "Diff"
-            }
-            zscore <-
-                (true_sil - mean(rand.sil)) / stats::sd(rand.sil)
-        } else {
-            true_sil <- NA
-            zscore <- NA
-            pval <- NA
-            iqr <- NA
-            rand.sil <- NA
-        }
-        res <- list()
-        for (c in levels(cond)) {
-            res[paste0(c, "_perc")] <- sum(cond == c) / length(cond)
-        }
-        for (c in levels(cond)) {
-            res[paste0(c, "_ratio")] <- sum(cond == c) / sum(cond != c)
-        }
-        res$true_sil <- true_sil
-        res$zscore <- zscore
-        res$pval <- pval
-        res$iqr <- iqr
-        res$rand.sil <- rand.sil
-        if (return.full) {
-            res$true_sil_full <- true_sil_full
-        }
-        return(res)
+    function(cond, n = 1000, rand.sil = NULL, return.full = FALSE, ...) {
+    if (length(levels(cond)) > 2) {
+        stop("Too many conditions. Maximum is 2.")
     }
+    true_sil_full <- cluster::silhouette(as.integer(cond), ...)
+    if (length(true_sil_full) > 1) {
+        true_sil <- summary(true_sil_full)$avg.width
+        if (is.null(rand.sil)) {
+            rand.sil <- rsilhouette(cond, n=n, ...)
+        }
+        pval <- sum(rand.sil > true_sil) / length(rand.sil)
+        all.sils <- c(rand.sil, true_sil)
+        iqr <- "Same"
+        if (length(all.sils) %in%
+            which(outliers::scores(all.sils, type="iqr", lim=TRUE))) {
+            iqr <- "Diff"
+        }
+        zscore <-
+            (true_sil - mean(rand.sil)) / stats::sd(rand.sil)
+    } else {
+        true_sil <- NA
+        zscore <- NA
+        pval <- NA
+        iqr <- NA
+        rand.sil <- NA
+    }
+    res <- list()
+    for (c in levels(cond)) {
+        res[paste0(c, "_perc")] <- sum(cond == c) / length(cond)
+    }
+    for (c in levels(cond)) {
+        res[paste0(c, "_ratio")] <- sum(cond == c) / sum(cond != c)
+    }
+    res$true_sil <- true_sil
+    res$zscore <- zscore
+    res$pval <- pval
+    res$iqr <- iqr
+    res$rand.sil <- rand.sil
+    if (return.full) {
+        res$true_sil_full <- true_sil_full
+    }
+    return(res)
+}
 
 #' Comparison of data conditions in a clustering
 #'
@@ -116,16 +112,17 @@ condcomp_cluster <-
 #' clustering <- iris$Species
 #' dmatrix <- as.matrix(dist(iris[-length(iris)]))
 #' # Suppose the conditions are 'young' and 'old' fish
-#' cond <- sample(c("young", "old"), nrow(iris), replace = TRUE)
-#' comp <- condcomp(clustering, cond, dmatrix = dmatrix, n = 10)
+#' cond <- sample(c("young", "old"), nrow(iris), replace=TRUE)
+#' comp <- condcomp(clustering, cond, dmatrix=dmatrix, n=10)
 #' @export
 condcomp <-
-    function(clustering,
-             cond,
-             dmatrix,
-             n = 1000,
-             seed.use = 1,
-             remove.na = TRUE) {
+    function(
+        clustering,
+        cond,
+        dmatrix,
+        n = 1000,
+        seed.use = 1,
+        remove.na = TRUE) {
     if (length(levels(cond)) > 2) {
         stop("Too many conditions. Maximum is 2.")
     }
@@ -144,11 +141,9 @@ condcomp <-
     }
     res <- data.frame(row.names=levels(clustering))
     res[paste0(levels(cond), "_perc")] <-
-        sapply(1:length(levels(cond)), function(x)
-        numeric())
+        lapply(seq_along(length(levels(cond))), function(x) numeric())
     res[paste0(levels(cond), "_ratio")] <-
-        sapply(1:length(levels(cond)), function(x)
-        numeric())
+        lapply(seq_along(length(levels(cond))), function(x) numeric())
     res["true_sil"] <- numeric()
     res["zscore"] <- numeric()
     res["pval"] <- numeric()
@@ -188,11 +183,12 @@ condcomp <-
 #' clustering <- iris$Species
 #' dmatrix <- as.matrix(dist(iris[-length(iris)]))
 #' # Suppose the conditions are 'young' and 'old' fish
-#' cond <- sample(c("young", "old"), nrow(iris), replace = TRUE)
-#' comp <- condcomp(clustering, cond, dmatrix = dmatrix, n = 10)
+#' cond <- sample(c("young", "old"), nrow(iris), replace=TRUE)
+#' comp <- condcomp(clustering, cond, dmatrix=dmatrix, n=10)
 #' condcompPlot(comp)
 #' @export
-condcompPlot <- function(ccomp, col = ccomp$iqr, main = NULL, legend.title = "IQR") {
+condcompPlot <-
+    function(ccomp, col = ccomp$iqr, main = NULL, legend.title = "IQR") {
     ## Will use the first 'x_ratio' that appears in the data frame column.
     ratio_name <- grep("*_ratio", colnames(ccomp), value=TRUE)[1]
     df <- data.frame(

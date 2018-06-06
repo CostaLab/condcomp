@@ -4,7 +4,7 @@
 \name{aml_post}
 \alias{aml_post}
 \title{AML_027: post HSCT for AML}
-\format{An object of class \code{dgTMatrix} with 32738 rows and 1474560 columns.}
+\format{An object of class \code{dgTMatrix} with 13552 rows and 7324 columns.}
 \usage{
 aml_post
 }
@@ -16,7 +16,7 @@ transplant (HSCT) for acute myeloid leukemia (AML).
 }
 \references{
 Zheng, Grace XY, et al. "Massively parallel digital
-  transcriptional profiling of single cells." Nature communications 8 (2017):
-  14049.
+    transcriptional profiling of single cells." Nature communications 8
+    (2017): 14049.
 }
 \keyword{datasets}
