@@ -78,7 +78,6 @@ condcomp_cluster <-
 #' @param n The number of random silhouettes to be performed. Keep in mind that
 #'     the computation of several random silhouettes is the bottleneck of this
 #'     process.
-#' @param seed.use Random seed for the random silhouettes.
 #' @param remove.na Logical. Remove lines with NA (i.e. clusters which the
 #'     silhouette could not be computed).
 #' @return A data frame with various statistics regarding data heterogeneity
@@ -121,7 +120,6 @@ condcomp <-
         cond,
         dmatrix,
         n = 1000,
-        seed.use = 1,
         remove.na = TRUE) {
     if (length(levels(cond)) > 2) {
         stop("Too many conditions. Maximum is 2.")
@@ -135,7 +133,6 @@ condcomp <-
     if (!is.factor(cond)) {
         cond <- as.factor(cond)
     }
-    set.seed(seed.use)
     if (!is.factor(clustering)) {
         clustering <- as.factor(clustering)
     }

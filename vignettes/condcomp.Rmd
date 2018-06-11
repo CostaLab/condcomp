@@ -84,9 +84,11 @@ data does not have many data points.
 hsmm <- FindVariableGenes(hsmm, do.plot = FALSE)
 hsmm <- RunPCA(hsmm)
 
-hsmm <- FindClusters(hsmm, reduction.type = "pca", dims.use = 1:5, resolution = 2)
+hsmm <- FindClusters(hsmm, reduction.type = "pca", dims.use = 1:5,
+                     resolution = 2)
 hsmm <- StashIdent(hsmm, save.name = "Cluster")
-hsmm <- RunTSNE(hsmm, reduction.use = "pca", dims.use = 1:5, do.fast = TRUE, perplexity = 15)
+hsmm <- RunTSNE(hsmm, reduction.use = "pca", dims.use = 1:5, do.fast = TRUE,
+                perplexity = 15)
 TSNEPlot(hsmm, group.by = "Condition", do.return = TRUE, pt.size = 0.5)
 TSNEPlot(hsmm, do.return = TRUE, pt.size = 0.5, do.label = TRUE, label.size = 5)
 ```

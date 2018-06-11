@@ -4,8 +4,7 @@
 \alias{condcomp}
 \title{Comparison of data conditions in a clustering}
 \usage{
-condcomp(clustering, cond, dmatrix, n = 1000, seed.use = 1,
-  remove.na = TRUE)
+condcomp(clustering, cond, dmatrix, n = 1000, remove.na = TRUE)
 }
 \arguments{
 \item{clustering}{A clustering of the data.}
@@ -18,8 +17,6 @@ subject to.}
 \item{n}{The number of random silhouettes to be performed. Keep in mind that
 the computation of several random silhouettes is the bottleneck of this
 process.}
-
-\item{seed.use}{Random seed for the random silhouettes.}
 
 \item{remove.na}{Logical. Remove lines with NA (i.e. clusters which the
 silhouette could not be computed).}

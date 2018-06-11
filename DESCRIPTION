@@ -27,5 +27,5 @@ Suggests: testthat,
     Seurat,
     monocle,
     HSMMSingleCell
-biocViews: SingleCell, Visualization
+biocViews: Clustering, SingleCell, Visualization
 VignetteBuilder: knitr
