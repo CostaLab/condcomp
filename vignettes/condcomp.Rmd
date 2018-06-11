@@ -25,17 +25,16 @@ two given conditions present in the data. For each cell type identified, these
 conditions may have different profiles. The _condcomp_ package aims to assist in
 the characterization of those differences in an easy and direct way.
 
-For this vignette we will be using the aml_027 data from
-[Zheng et al](https://www.nature.com/articles/ncomms14049)
-which is bundled in the `condcomp` package. The aml027 single-cell RNA-seq
-library was generated from cryopreserved bone marrow mononuclear cell (BMMC)
-samples obtained from a patitent before (aml027_pre) and after (aml027_post)
-undergoing hematopoietic stem cell transplant (HSCT) for acute myeloid leukemia
-(AML).
-
-The data bundled in this package had some filtering: cells which did not
-express at least 300 genes and genes who were not expressed by at least 4 cells
-were removed.
+For this vignette we will be use the HSMM data from
+[`monocle`](https://bioconductor.org/packages/release/bioc/html/monocle.html)
+which is available through the
+[`HSMMSingleCell`](https://bioconductor.org/packages/release/data/experiment/html/HSMMSingleCell.html)
+package.
+The data pertains information on an experiment where primary human skeletal
+muscle myoblasts (HSMM) were expanded under high mitogen conditions (GM) and
+then differentiated by switching to low-mitogen media (DM). RNA-Seq libraries
+were sequenced from each of several hundred cells taken over a time-course (0,
+24, 48, 72 hours) of serum-induced differentiation.
 
 We will use the [Seurat](https://cran.r-project.org/package=Seurat) package in
 order to perform the analysis of the data.
@@ -48,101 +47,61 @@ The package can be installed using the chunk below.
 BiocInstaller::biocLite("condcomp")
 ```
 
-# Loading the data
+# Using the package
 
-Firstly, let us load the data and encapsulate it in a Seurat object.
+Firstly we load the data and encapsulate it in a Seurat object. Then we create
+a new meta data by re-labelling the times 0 and 24 to 'Early' and 48 and 72
+to 'Late'.
 
 ```{r load_data, results='hide'}
 library(condcomp)
+library(monocle)
+library(HSMMSingleCell)
 library(Seurat)
-data(aml_pre)
-aml_pre <- CreateSeuratObject(aml_pre)
-aml_pre <- NormalizeData(aml_pre)
-aml_pre <- ScaleData(aml_pre)
-aml_pre <- FindVariableGenes(aml_pre, do.plot = FALSE)
 
-data(aml_post)
-aml_post <- CreateSeuratObject(aml_post)
-aml_post <- NormalizeData(aml_post)
-aml_post <- ScaleData(aml_post)
-aml_post <- FindVariableGenes(aml_post, do.plot = FALSE)
+hsmm <- load_HSMM()
+hsmm <- exportCDS(hsmm, export_to = "Seurat")
+hsmm_hours <- as.character(FetchData(hsmm, vars.all = "Hours")[,1])
+hsmm_hours[hsmm_hours == "0"] <- "Early"
+hsmm_hours[hsmm_hours == "24"] <- "Early"
+hsmm_hours[hsmm_hours == "48"] <- "Late"
+hsmm_hours[hsmm_hours == "72"] <- "Late"
+hsmm_hours <- as.factor(hsmm_hours)
+hsmm <- SetIdent(hsmm, ident.use = hsmm_hours)
+hsmm <- StashIdent(hsmm, save.name = "Condition")
 ```
 
-Since we are using datasets from different experiments, we use
-[Seurat's aligment procedure](https://satijalab.org/seurat/Seurat_AlignmentTutorial.html)
-before performing any analysis on the data. Firstly, we run a canonical
-correlation analysis to identify common sources of variation between the two
-datasets. For that we will be using the top 2,000 high variable genes from each
-dataset. The information describing the condition ('pre' or 'post') is also
-stored.
+Next we will find the highly variable genes for this data and use then to build
+the PCA space. Finally, we cluster our data using the Seurat function
+`FindClusters` and project the data onto t-SNE space for visualisation.
 
-```{r cca_data, fig.width=5, fig.height=5}
-hvg_pre <- rownames(head(aml_pre@hvg.info, n = 2000))
-hvg_post <- rownames(head(aml_post@hvg.info, n = 2000))
-hvg_union <- union(hvg_pre, hvg_post)
+The `resolution` parameter of `FindCluster` was set from the default value (one)
+to two, in order to increase the amount of clusters given by the algorithm. The
+`perplexity` parameter was reduce from the default value of 30 to 15, as this
+data does not have many data points.
 
-aml_pre@meta.data[, "condition"] <- "pre"
-aml_post@meta.data[, "condition"] <- "post"
+```{r cluster, results='hide'}
+hsmm <- FindVariableGenes(hsmm, do.plot = FALSE)
+hsmm <- RunPCA(hsmm)
 
-aml <- RunCCA(aml_pre, aml_post, genes.use = hvg_union)
-# Scatter plot using the first two dimensions of the CCA for each condition
-DimPlot(aml, reduction.use = "cca", group.by = "condition", pt.size = 0.5,
-        do.return = TRUE)
-# Violin plot of the first dimension of the CCA for each condition
-VlnPlot(aml, features.plot = "CC1", group.by = "condition", do.return = TRUE)
-PrintDim(aml, reduction.type = "cca", dims.print = 1:2, genes.print = 10)
-```
-
-Now we need to decide which PCs to use in the downstream analysis. We employ one
-of the approaches suggested by Seurat, which is done by analysing the heatmaps
-of gene expressions. For this analysis we chose to use the first 5 PCs.
-
-```{r gene_heatmap, fig.width=9, fig.height=9}
-DimHeatmap(aml, reduction.type = "cca", cells.use = 500, dim.use = 1:9,
-            do.balanced = TRUE)
-DimHeatmap(aml, reduction.type = "cca", cells.use = 500, dim.use = 10:18,
-            do.balanced = TRUE)
-```
-
-Next we search for cells whose expression profile cannot be well-explained by
-low-dimensional CCA, compared to low-dimensional PCA. Then we finally align the
-datasets.
-
-```{r align_data, results='hide', message=FALSE, warning=FALSE, fig.width=5, fig.height=5}
-aml <- CalcVarExpRatio(aml, reduction.type = "pca", grouping.var = "condition",
-                        dims.use = 1:5)
-aml <- SubsetData(aml, subset.name = "var.ratio.pca", accept.low = 0.5)
-aml <- AlignSubspace(aml, reduction.type = "cca", grouping.var = "condition",
-                        dims.align = 1:5)
-# Scatter plot using the first two dimensions of the CCA for each condition
-DimPlot(aml, reduction.use = "cca", group.by = "condition", pt.size = 0.5,
-        do.return = TRUE)
-```
-
-Now the analysis can be performed in the dataset. In the chunk below we cluster
-the and project the data onto the t-SNE space.
-
-```{r cluster_data, fig.width=5, fig.height=5}
-aml <- RunTSNE(aml, reduction.use = "cca.aligned", dims.use = 1:5, 
-    do.fast = TRUE)
-aml <- FindClusters(aml, reduction.type = "cca.aligned", dims.use = 1:5, 
-    save.SNN = TRUE)
-aml <- StashIdent(aml, save.name = "Cluster")
-TSNEPlot(aml, group.by = "condition", do.return = TRUE, pt.size = 0.5)
-TSNEPlot(aml, do.return = TRUE, pt.size = 0.5, do.label = TRUE, label.size = 5)
+hsmm <- FindClusters(hsmm, reduction.type = "pca", dims.use = 1:5, resolution = 2)
+hsmm <- StashIdent(hsmm, save.name = "Cluster")
+hsmm <- RunTSNE(hsmm, reduction.use = "pca", dims.use = 1:5, do.fast = TRUE, perplexity = 15)
+TSNEPlot(hsmm, group.by = "Condition", do.return = TRUE, pt.size = 0.5)
+TSNEPlot(hsmm, do.return = TRUE, pt.size = 0.5, do.label = TRUE, label.size = 5)
 ```
 
 The bar plot below shows the amount of cells in each condition grouped by
 cluster.
 
 ```{r cluster_cond_barplot, fig.width=6, fig.height=4}
-aml <- SetAllIdent(aml, "Cluster")
-counts <- as.data.frame(table(aml@meta.data$condition, aml@ident))
+hsmm <- SetAllIdent(hsmm, "Cluster")
+counts <- as.data.frame(table(hsmm@meta.data$Condition, hsmm@ident))
 names(counts) <- c("Condition", "Cluster", "Cells")
 gplot <- ggplot(data = counts, aes(x = Cluster, y = Cells, fill = Condition)) +
     geom_bar(stat="identity", position = position_dodge()) +
-    geom_text(aes(label = Cells), vjust = 1.6, color = "white",
-                position = position_dodge(0.9), size = 3.5)
+    geom_text(aes(label = Cells), vjust = 1.6, color = "black",
+                position = position_dodge(0.9), size = 2.5)
 gplot
 ```
 
@@ -157,44 +116,44 @@ the manual page for `condcomp`.
 ```{r condcomp, message=FALSE}
 # Computes the euclidean distance matrix
 dmatrix <- dist(
-    GetDimReduction(aml, reduction.type = "cca", slot = "cell.embeddings"),
+    GetDimReduction(hsmm, reduction.type = "pca", slot = "cell.embeddings"),
     method = "euclidean")
 dmatrix <- as.matrix(dmatrix)
-aml <- SetAllIdent(aml, "Cluster")
-ccomp <- condcomp(aml@ident, aml@meta.data$condition, dmatrix, n = 1000)
+hsmm <- SetAllIdent(hsmm, "Cluster")
+ccomp <- condcomp(hsmm@ident, hsmm@meta.data$Condition, dmatrix, n = 1000)
 # It is pertinent to compute the adjusted p-value, given the computation method
 # (see the manual for 'condcomp')
 ccomp$pval_adj <- p.adjust(ccomp$pval, method = "bonferroni")
 knitr::kable(ccomp)
 ```
 
-Next we plot the results of the analysis. We can see that groups 5 and 11,
-which have a near 1:1 ratio between conditions also have a high Z-score,
-reinforcing the indication of high heterogeneity in those groups.
+Next we plot the results of the analysis. We can see that group 3, which has a
+near 1:1 ratio between conditions, also has a high Z-score, reinforcing the
+indication of high heterogeneity in those groups.
 
 Groups which one of the conditions is more predominant tend to have lower
 Z-scores. Groups which this condition predominance is observed but have a
 considerable high Z-score might be worth investigating. This could indicate a
-poor performance on clustering or indeed an interesting group that must be
-more meticulously analysed.
+poor performance on clustering or indeed an interesting group that must be more
+meticulously analysed.
 
-We noticed that the IQR based approach is indicating 'Diff' for all groups.
-Although that information should not be considered alone (see the man page for
-`condcomp` on details regarding the computation of the IQR): it is one of the
+We can see that the IQR based approach is indicating 'Same' for some groups.
+Although that information should not be considered alone (see the man page of
+`condcomp` for details regarding the computation of the IQR): it is one of the
 indicators of heterogeneity, the other indicators being: the ratio between
 conditions, the Z-score, and the p-value. The last is present in the previous
 table but not in the plot below.
 
-For this data almost all p-values were zero, which indicate a considerable
-heterogneity within groups. Conversely a high p-value indicates a low
-heterogeneity.
+For this data some p-values were exactly or near zero (even after the
+correction), which indicate a considerable heterogeneity for those groups.
+Conversely a high p-value indicates a low heterogeneity.
 
 Note that the parameter `n` should be set accordingly. The greater this value,
-the more reliable the results at the cost of an increase in execution time. In
-this vignette we used the dafault value of 1,000 but, depending on the number of
-objects (cells) in the dataset, a much greater value should be used. If unsure,
-setting `n = 10000` should be a fairly reasonable value for typical single cell
-datasets.
+the more reliable are the results at the cost of an increase in execution time.
+In this vignette we used the dafault value of 1,000 but, depending on the number
+of objects (cells) in the dataset, a much greater value should be used. If
+unsure, setting `n = 10000` should be a fairly reasonable value for typical
+single cell datasets.
 
 ```{r condcomp_plot, fig.width=5, fig.height=5}
 condcompPlot(ccomp, main = "Intra-cluster heterogeneity between conditions")
@@ -204,5 +163,5 @@ The main objective of this plot is to assist with the detection of heterogeneous
 groups with respect to the conditions. These groups can be sources of valuable
 information in differential analysis and group profiling.
 
-This plot is even more powerful if the data is annotatted. For instance, we
-could perform `condcomp` on identified cell types instead.
+This plot is even more powerful if the data is annotated. For instance, we could
+perform `condcomp` on identified cell types instead.
