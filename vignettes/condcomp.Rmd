@@ -11,8 +11,6 @@ vignette: >
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-    cache=TRUE,
-    cache.lazy=TRUE,
     collapse=TRUE,
     comment="#>"
 )
@@ -51,9 +49,9 @@ BiocInstaller::biocLite("condcomp")
 
 Firstly we load the data and encapsulate it in a Seurat object. Then we create
 a new meta data by re-labelling the times 0 and 24 to 'Early' and 48 and 72
-to 'Late'.
+to 'Late'. That will be our condition.
 
-```{r load_data, results='hide'}
+```{r load_data, results='hide', message=FALSE}
 library(condcomp)
 library(monocle)
 library(HSMMSingleCell)
@@ -157,7 +155,7 @@ of objects (cells) in the dataset, a much greater value should be used. If
 unsure, setting `n = 10000` should be a fairly reasonable value for typical
 single cell datasets.
 
-```{r condcomp_plot, fig.width=5, fig.height=5}
+```{r condcomp_plot, fig.width=5, fig.height=4}
 condcompPlot(ccomp, main = "Intra-cluster heterogeneity between conditions")
 ```
 
