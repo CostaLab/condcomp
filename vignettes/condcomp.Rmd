@@ -47,9 +47,9 @@ BiocInstaller::biocLite("condcomp")
 
 # Using the package
 
-Firstly we load the data and encapsulate it in a Seurat object. Then we create
-a new meta data by re-labelling the times 0 and 24 to 'Early' and 48 and 72
-to 'Late'. That will be our condition.
+Firstly we load the data and encapsulate it in a Seurat object. We will use only
+only times 24 and 48 in our example as those will be the two condtions to be
+analysed.
 
 ```{r load_data, results='hide', message=FALSE}
 library(condcomp)
@@ -57,38 +57,39 @@ library(monocle)
 library(HSMMSingleCell)
 library(Seurat)
 
+# Load the dataset
 hsmm <- load_HSMM()
+# Encapsulate data in a Seurat object
 hsmm <- exportCDS(hsmm, export_to = "Seurat")
-hsmm_hours <- as.character(FetchData(hsmm, vars.all = "Hours")[,1])
-hsmm_hours[hsmm_hours == "0"] <- "Early"
-hsmm_hours[hsmm_hours == "24"] <- "Early"
-hsmm_hours[hsmm_hours == "48"] <- "Late"
-hsmm_hours[hsmm_hours == "72"] <- "Late"
-hsmm_hours <- as.factor(hsmm_hours)
-hsmm <- SetIdent(hsmm, ident.use = hsmm_hours)
+# Set ident to 'Hours'
+hsmm <- SetAllIdent(hsmm, id = "Hours")
+# Subset the Seurat object to have cells only from 24 and 48 hours
+hsmm <- SubsetData(hsmm, ident.use = c("24", "48"))
+# Stores this ident as a 'Condition' column in 'meta.data'
 hsmm <- StashIdent(hsmm, save.name = "Condition")
 ```
 
-Next we will find the highly variable genes for this data and use then to build
+Next we will find the highly variable genes for this data and use them to build
 the PCA space. Finally, we cluster our data using the Seurat function
-`FindClusters` and project the data onto t-SNE space for visualisation.
+`FindClusters` and project the data onto the t-SNE space for visualisation.
 
-The `resolution` parameter of `FindCluster` was set from the default value (one)
-to two, in order to increase the amount of clusters given by the algorithm. The
-`perplexity` parameter was reduce from the default value of 30 to 15, as this
-data does not have many data points.
+The `resolution` parameter of `FindCluster` was set from the default value of
+one to two, in order to increase the amount of clusters given by the algorithm.
+The `perplexity` parameter was reduced from the default value of 30 to 15, as
+this data does not have many data points.
 
 ```{r cluster, results='hide'}
 hsmm <- FindVariableGenes(hsmm, do.plot = FALSE)
 hsmm <- RunPCA(hsmm)
 
 hsmm <- FindClusters(hsmm, reduction.type = "pca", dims.use = 1:5,
-                     resolution = 2)
+                resolution = 2)
 hsmm <- StashIdent(hsmm, save.name = "Cluster")
 hsmm <- RunTSNE(hsmm, reduction.use = "pca", dims.use = 1:5, do.fast = TRUE,
                 perplexity = 15)
 TSNEPlot(hsmm, group.by = "Condition", do.return = TRUE, pt.size = 0.5)
-TSNEPlot(hsmm, do.return = TRUE, pt.size = 0.5, do.label = TRUE, label.size = 5)
+TSNEPlot(hsmm, do.return = TRUE, pt.size = 0.5, do.label = TRUE,
+                label.size = 5)
 ```
 
 The bar plot below shows the amount of cells in each condition grouped by
@@ -98,17 +99,16 @@ cluster.
 hsmm <- SetAllIdent(hsmm, "Cluster")
 counts <- as.data.frame(table(hsmm@meta.data$Condition, hsmm@ident))
 names(counts) <- c("Condition", "Cluster", "Cells")
-gplot <- ggplot(data = counts, aes(x = Cluster, y = Cells, fill = Condition)) +
+ggplot(data = counts, aes(x = Cluster, y = Cells, fill = Condition)) +
     geom_bar(stat="identity", position = position_dodge()) +
     geom_text(aes(label = Cells), vjust = 1.6, color = "black",
                 position = position_dodge(0.9), size = 2.5)
-gplot
 ```
 
 Having the clustering set up, we can now use `condcomp` in order to gain insight
 about the heterogenity between conditions for each cluster. Ideally, these
-cluster would be annotated with cell types, although that does not diminish the
-usefulness of the analysis provided by `condcomp`.
+clusteres would be annotated with cell types, although that does not diminish
+the usefulness of the analysis provided by `condcomp`.
 
 For a description of each column in the resulting data frame, please refer to
 the manual page for `condcomp`.
@@ -127,9 +127,12 @@ ccomp$pval_adj <- p.adjust(ccomp$pval, method = "bonferroni")
 knitr::kable(ccomp)
 ```
 
-Next we plot the results of the analysis. We can see that group 3, which has a
-near 1:1 ratio between conditions, also has a high Z-score, reinforcing the
-indication of high heterogeneity in those groups.
+Next we plot the results of the analysis. We can see that group 6, despite
+having a 1:1 ratio between conditions, has a low Z-score, which indicates a low
+heterogeneity within said group despite the seemingly heterogeneity stemming
+from the condition ratio. In contrast, group 2, which has a near 1:1 ratio
+between conditions, has a high Z-score, reinforcing the apparent heterogeneity
+that stems from the condition ratio.
 
 Groups which one of the conditions is more predominant tend to have lower
 Z-scores. Groups which this condition predominance is observed but have a
@@ -140,9 +143,10 @@ meticulously analysed.
 We can see that the IQR based approach is indicating 'Same' for some groups.
 Although that information should not be considered alone (see the man page of
 `condcomp` for details regarding the computation of the IQR): it is one of the
-indicators of heterogeneity, the other indicators being: the ratio between
+indicators of heterogeneity. The other indicators being: the ratio between
 conditions, the Z-score, and the p-value. The last is present in the previous
-table but not in the plot below.
+table but not in the plot below. In this example, it is evident that all the
+groups with low Z-score also have a value of 'Same' for IQR.
 
 For this data some p-values were exactly or near zero (even after the
 correction), which indicate a considerable heterogeneity for those groups.
