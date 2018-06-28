@@ -121,6 +121,9 @@ condcomp <-
         dmatrix,
         n = 1000,
         remove.na = TRUE) {
+    if (!is.factor(cond)) {
+        cond <- as.factor(cond)
+    }
     if (length(levels(cond)) > 2) {
         stop("Too many conditions. Maximum is 2.")
     }
@@ -129,9 +132,6 @@ condcomp <-
     }
     if (!is.matrix(dmatrix)) {
         dmatrix <- as.matrix(dmatrix)
-    }
-    if (!is.factor(cond)) {
-        cond <- as.factor(cond)
     }
     if (!is.factor(clustering)) {
         clustering <- as.factor(clustering)
